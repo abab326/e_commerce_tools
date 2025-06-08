@@ -1,7 +1,10 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart'; // 新增：导入 path_provider 包
 
 class ImageProcessor extends StatefulWidget {
   const ImageProcessor({Key? key}) : super(key: key);
@@ -107,7 +110,7 @@ class _ImageProcessorState extends State<ImageProcessor> {
   }
 
   // 保存图片
-  void saveImages() {
+  void saveImages() async {
     // 实际应用中，这里应该处理图片保存逻辑
     List<String> mainImageNames = [];
     List<String> secondaryImageNames = [];
@@ -116,14 +119,18 @@ class _ImageProcessorState extends State<ImageProcessor> {
     for (int i = 0; i < mainImages.length; i++) {
       String extension = path.extension(mainImages[i].path);
       if (extension.isEmpty) extension = '.jpg';
-      mainImageNames.add('${fileNamePrefix}_main_${i + 1}$extension');
+      String newName = '${fileNamePrefix}_main_${i + 1}$extension';
+      mainImageNames.add(newName);
+      await _saveImageWithNewName(mainImages[i], newName);
     }
 
     // 生成副图文件名
     for (int i = 0; i < secondaryImages.length; i++) {
       String extension = path.extension(secondaryImages[i].path);
       if (extension.isEmpty) extension = '.jpg';
-      secondaryImageNames.add('${fileNamePrefix}_secondary_${i + 1}$extension');
+      String newName = '${fileNamePrefix}_secondary_${i + 1}$extension';
+      secondaryImageNames.add(newName);
+      await _saveImageWithNewName(secondaryImages[i], newName);
     }
 
     // 显示保存成功对话框
@@ -149,6 +156,77 @@ class _ImageProcessorState extends State<ImageProcessor> {
           ),
         ],
       ),
+    );
+  }
+
+  // 新增方法：以新名称保存图片
+  Future<void> _saveImageWithNewName(File imageFile, String newName) async {
+    final directory = imageFile.parent; // 使用导入的 path_provider 方法
+    final newPath = path.join(directory.path, newName);
+    print('保存图片到: $newPath');
+    final newFile = File(newPath);
+
+    // 读取原始图片数据
+    final bytes = await imageFile.readAsBytes();
+
+    // 保存图片到新路径
+    await newFile.writeAsBytes(bytes);
+  }
+
+  Widget buildImageItem(File imageFile,int index, Function fun) {
+    return Stack(
+      key: Key("${imageFile.path + index.toString()}"),
+      children: [
+        Container(
+          margin: EdgeInsets.all(8.0),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.file(
+                mainImages[index],
+                width: 110,
+                height: 80,
+                fit: BoxFit.cover,
+              ),
+              Container(
+                width: 110,
+                color: Colors.grey.shade200,
+                padding: EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.drag_handle, size: 14, color: Colors.grey),
+                    SizedBox(width: 2),
+                    Text(
+                      '拖动',
+                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          right: 0,
+          top: 0,
+          child: InkWell(
+            onTap: () => fun(index),
+            child: Container(
+              padding: EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.close, size: 16, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -229,76 +307,7 @@ class _ImageProcessorState extends State<ImageProcessor> {
                               index < mainImages.length;
                               index++
                             )
-                              Stack(
-                                key: Key('main_$index'),
-                                children: [
-                                  Container(
-                                    margin: EdgeInsets.all(8.0),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: Colors.grey.shade300,
-                                      ),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Image.file(
-                                          mainImages[index],
-                                          width: 110,
-                                          height: 80,
-                                          fit: BoxFit.cover,
-                                        ),
-                                        Container(
-                                          width: 110,
-                                          color: Colors.grey.shade200,
-                                          padding: EdgeInsets.symmetric(
-                                            vertical: 2,
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.drag_handle,
-                                                size: 14,
-                                                color: Colors.grey,
-                                              ),
-                                              SizedBox(width: 2),
-                                              Text(
-                                                '拖动',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: InkWell(
-                                      onTap: () => removeMainImage(index),
-                                      child: Container(
-                                        padding: EdgeInsets.all(2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.close,
-                                          size: 16,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              buildImageItem(mainImages[index], index,removeMainImage),
                           ],
                         ),
                 ),
@@ -350,76 +359,7 @@ class _ImageProcessorState extends State<ImageProcessor> {
                               index < secondaryImages.length;
                               index++
                             )
-                              Stack(
-                                key: Key('secondary_$index'),
-                                children: [
-                                  Container(
-                                    margin: EdgeInsets.all(8.0),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: Colors.grey.shade300,
-                                      ),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Image.file(
-                                          secondaryImages[index],
-                                          width: 110,
-                                          height: 80,
-                                          fit: BoxFit.cover,
-                                        ),
-                                        Container(
-                                          width: 110,
-                                          color: Colors.grey.shade200,
-                                          padding: EdgeInsets.symmetric(
-                                            vertical: 2,
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.drag_handle,
-                                                size: 14,
-                                                color: Colors.grey,
-                                              ),
-                                              SizedBox(width: 2),
-                                              Text(
-                                                '拖动',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: InkWell(
-                                      onTap: () => removeSecondaryImage(index),
-                                      child: Container(
-                                        padding: EdgeInsets.all(2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.close,
-                                          size: 16,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              buildImageItem(mainImages[index], index,removeSecondaryImage),
                           ],
                         ),
                 ),

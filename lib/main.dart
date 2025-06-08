@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'pages/home.dart';
 
 void main() {
+  debugCheckIntrinsicSizes = true;
   runApp(const MainApp());
 }
 
