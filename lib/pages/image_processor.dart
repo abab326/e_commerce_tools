@@ -1,10 +1,8 @@
-import 'dart:ffi';
-
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart'; // 新增：导入 path_provider 包
+import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 
 class ImageProcessor extends StatefulWidget {
   const ImageProcessor({Key? key}) : super(key: key);
@@ -19,7 +17,21 @@ class _ImageProcessorState extends State<ImageProcessor> {
   // 副图列表
   List<File> secondaryImages = [];
   // 文件名前缀
-  String fileNamePrefix = 'product';
+  String fileNamePrefix = 'image';
+
+  TextEditingController fileNamePrefixController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    fileNamePrefixController = TextEditingController(text: fileNamePrefix);
+  }
+
+  @override
+  void dispose() {
+    fileNamePrefixController.dispose();
+    super.dispose();
+  }
 
   // 添加主图
   Future<void> addMainImages() async {
@@ -109,6 +121,16 @@ class _ImageProcessorState extends State<ImageProcessor> {
     });
   }
 
+  // 重置
+  void reset() {
+    setState(() {
+      mainImages.clear(); // 清空主图列表
+      secondaryImages.clear(); // 清空副图列表
+      fileNamePrefix = 'image'; // 恢复默认文件名前缀
+      fileNamePrefixController.text = fileNamePrefix; // 更新输入框内容
+    });
+  }
+
   // 保存图片
   void saveImages() async {
     // 实际应用中，这里应该处理图片保存逻辑
@@ -173,7 +195,7 @@ class _ImageProcessorState extends State<ImageProcessor> {
     await newFile.writeAsBytes(bytes);
   }
 
-  Widget buildImageItem(File imageFile,int index, Function fun) {
+  Widget buildImageItem(File imageFile, int index, Function fun) {
     return Stack(
       key: Key("${imageFile.path + index.toString()}"),
       children: [
@@ -186,12 +208,7 @@ class _ImageProcessorState extends State<ImageProcessor> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.file(
-                mainImages[index],
-                width: 110,
-                height: 80,
-                fit: BoxFit.cover,
-              ),
+              Image.file(imageFile, width: 110, height: 80, fit: BoxFit.cover),
               Container(
                 width: 110,
                 color: Colors.grey.shade200,
@@ -241,131 +258,145 @@ class _ImageProcessorState extends State<ImageProcessor> {
             onPressed: saveImages,
             tooltip: '保存图片',
           ),
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: reset,
+            tooltip: '重置',
+          ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 文件名前缀输入
-            TextField(
-              decoration: InputDecoration(
-                labelText: '文件名前缀',
-                hintText: '请输入文件名前缀',
-                border: OutlineInputBorder(),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 文件名前缀输入
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '文件名前缀',
+                  hintText: '请输入文件名前缀',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    fileNamePrefix = value;
+                  });
+                },
+                controller: fileNamePrefixController,
               ),
-              onChanged: (value) {
-                setState(() {
-                  fileNamePrefix = value;
-                });
-              },
-              controller: TextEditingController(text: fileNamePrefix),
-            ),
-            SizedBox(height: 20),
+              SizedBox(height: 20),
+              // 主图区域
+              Text(
+                '主图',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: addMainImages,
+                    icon: Icon(Icons.add_photo_alternate),
+                    label: Text('添加主图'),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.drag_indicator, size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        '拖动可调整顺序',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Container(
+                    child: mainImages.isEmpty
+                        ? Center(child: Text('暂无主图'))
+                        : ReorderableGridView.builder(
+                           shrinkWrap: true,
+                            onReorder: reorderMainImages,
+                            gridDelegate:
+                                SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 150,
+                                  childAspectRatio: 1.0,
+                                  crossAxisSpacing: 10,
+                                  mainAxisSpacing: 10,
+                                ),
+                            itemCount: mainImages.length,
+                            itemBuilder: (context, index) => buildImageItem(
+                              mainImages[index],
+                              index,
+                              removeMainImage,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
 
-            // 主图区域
-            Text(
-              '主图',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: addMainImages,
-                  icon: Icon(Icons.add_photo_alternate),
-                  label: Text('添加主图'),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.drag_indicator, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      '拖动可调整顺序',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4),
-                Container(
-                  height: 120,
-                  child: mainImages.isEmpty
-                      ? Center(child: Text('暂无主图'))
-                      : ReorderableListView(
-                          scrollDirection: Axis.horizontal,
-                          onReorder: reorderMainImages,
-                          children: [
-                            for (
-                              int index = 0;
-                              index < mainImages.length;
-                              index++
-                            )
-                              buildImageItem(mainImages[index], index,removeMainImage),
-                          ],
-                        ),
-                ),
-              ],
-            ),
+              SizedBox(height: 30),
 
-            SizedBox(height: 30),
-
-            // 副图区域
-            Text(
-              '副图',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: addSecondaryImages,
-                  icon: Icon(Icons.add_photo_alternate),
-                  label: Text('添加副图'),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.drag_indicator, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      '拖动可调整顺序',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4),
-                Container(
-                  height: 120,
-                  child: secondaryImages.isEmpty
-                      ? Center(child: Text('暂无副图'))
-                      : ReorderableListView(
-                          scrollDirection: Axis.horizontal,
-                          onReorder: reorderSecondaryImages,
-                          children: [
-                            for (
-                              int index = 0;
-                              index < secondaryImages.length;
-                              index++
-                            )
-                              buildImageItem(mainImages[index], index,removeSecondaryImage),
-                          ],
-                        ),
-                ),
-              ],
-            ),
-          ],
+              // 副图区域
+              Text(
+                '副图',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: addSecondaryImages,
+                    icon: Icon(Icons.add_photo_alternate),
+                    label: Text('添加副图'),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.drag_indicator, size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        '拖动可调整顺序',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Container(
+                    child: secondaryImages.isEmpty
+                        ? Center(child: Text('暂无副图'))
+                        : ReorderableGridView.builder(
+                           shrinkWrap: true,
+                            onReorder: reorderMainImages,
+                            gridDelegate:
+                                SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 150,
+                                  childAspectRatio: 1.0,
+                                  crossAxisSpacing: 10,
+                                  mainAxisSpacing: 10,
+                                ),
+                            itemCount: secondaryImages.length,
+                            itemBuilder: (context, index) => buildImageItem(
+                              secondaryImages[index],
+                              index,
+                              removeMainImage,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
