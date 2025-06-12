@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'image_processor.dart';
+import 'excel_page.dart';
+import 'keyword_processor.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -11,13 +13,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   final List<Widget> _pages = [
-    const Center(child: Text('首页')),
-    const Center(child: Text('商品管理')),
-    const Center(child: Text('订单管理')),
-    const Center(child: Text('客户管理')),
-    const Center(child: Text('统计分析')),
-    const Center(child: Text('系统设置')),
     const ImageProcessor(),
+    const ExcelPage(),
+    const KeywordProcessor(),
   ];
 
   @override
@@ -41,9 +39,10 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
+          
                 ListTile(
-                  leading: Icon(Icons.home),
-                  title: Text('首页'),
+                  leading: Icon(Icons.image),
+                  title: Text('图片处理'),
                   selected: _selectedIndex == 0,
                   onTap: () {
                     setState(() {
@@ -52,8 +51,8 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
                 ListTile(
-                  leading: Icon(Icons.inventory),
-                  title: Text('商品管理'),
+                  leading: Icon(Icons.table_chart),
+                  title: Text('Excel 处理'),
                   selected: _selectedIndex == 1,
                   onTap: () {
                     setState(() {
@@ -62,52 +61,12 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
                 ListTile(
-                  leading: Icon(Icons.shopping_cart),
-                  title: Text('订单管理'),
+                  leading: Icon(Icons.keyboard),
+                  title: Text('关键词处理'),
                   selected: _selectedIndex == 2,
                   onTap: () {
                     setState(() {
                       _selectedIndex = 2;
-                    });
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.people),
-                  title: Text('客户管理'),
-                  selected: _selectedIndex == 3,
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = 3;
-                    });
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.bar_chart),
-                  title: Text('统计分析'),
-                  selected: _selectedIndex == 4,
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = 4;
-                    });
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.settings),
-                  title: Text('系统设置'),
-                  selected: _selectedIndex == 5,
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = 5;
-                    });
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.image),
-                  title: Text('图片处理'),
-                  selected: _selectedIndex == 6,
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = 6;
                     });
                   },
                 ),

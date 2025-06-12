@@ -13,6 +13,9 @@ dependencies:
   path_provider: ^2.1.5
   path: ^1.8.0
   reorderable_grid_view: ^2.2.8 
+  syncfusion_flutter_xlsio : ^29.2.10
+  flutter_excel: ^1.0.1
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

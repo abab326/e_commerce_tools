@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
+import 'package:intl/intl.dart';
 
 class ImageProcessor extends StatefulWidget {
   const ImageProcessor({Key? key}) : super(key: key);
@@ -16,6 +17,8 @@ class _ImageProcessorState extends State<ImageProcessor> {
   List<File> mainImages = [];
   // 副图列表
   List<File> secondaryImages = [];
+  // 上传后图片地址
+  String uploadedImageUrl = '';
   // 文件名前缀
   String fileNamePrefix = 'image';
 
@@ -24,6 +27,9 @@ class _ImageProcessorState extends State<ImageProcessor> {
   @override
   void initState() {
     super.initState();
+    final nowDate =  DateFormat('yyyy/MM/dd').format(DateTime.now());
+    uploadedImageUrl = 'https://s2.imgsha.com/'+ nowDate + '/';
+    // 初始化时加载文件名前缀
     fileNamePrefixController = TextEditingController(text: fileNamePrefix);
   }
 
@@ -102,9 +108,6 @@ class _ImageProcessorState extends State<ImageProcessor> {
   // 重新排序主图
   void reorderMainImages(int oldIndex, int newIndex) {
     setState(() {
-      if (oldIndex < newIndex) {
-        newIndex -= 1;
-      }
       final File item = mainImages.removeAt(oldIndex);
       mainImages.insert(newIndex, item);
     });
@@ -112,10 +115,9 @@ class _ImageProcessorState extends State<ImageProcessor> {
 
   // 重新排序副图
   void reorderSecondaryImages(int oldIndex, int newIndex) {
+    print('reorderSecondaryImage: $oldIndex, $newIndex ');
     setState(() {
-      if (oldIndex < newIndex) {
-        newIndex -= 1;
-      }
+      // 原逻辑可能不适用于将后面图片拖动到前面，移除索引调整
       final File item = secondaryImages.removeAt(oldIndex);
       secondaryImages.insert(newIndex, item);
     });
@@ -133,71 +135,69 @@ class _ImageProcessorState extends State<ImageProcessor> {
 
   // 保存图片
   void saveImages() async {
-    // 实际应用中，这里应该处理图片保存逻辑
-    List<String> mainImageNames = [];
-    List<String> secondaryImageNames = [];
 
+    if (mainImages.isEmpty && secondaryImages.isEmpty) {
+      return; // 主图和副图都为空时不执行保存操作 
+    }
+   
+    List uploadImageUrls = [];
+    var parentDirectoryPath = ''; // 父目录路径
     // 生成主图文件名
     for (int i = 0; i < mainImages.length; i++) {
+      if (i == 0) {
+        parentDirectoryPath = path.dirname(mainImages[i].path); // 获取父目录路径
+      }
       String extension = path.extension(mainImages[i].path);
       if (extension.isEmpty) extension = '.jpg';
       String newName = '${fileNamePrefix}_main_${i + 1}$extension';
-      mainImageNames.add(newName);
+      uploadImageUrls.add(uploadedImageUrl + newName);
       await _saveImageWithNewName(mainImages[i], newName);
     }
 
     // 生成副图文件名
     for (int i = 0; i < secondaryImages.length; i++) {
+      if (i == 0 && parentDirectoryPath.isEmpty) {
+        parentDirectoryPath = path.dirname(secondaryImages[i].path); // 获取父目录路径
+      }
       String extension = path.extension(secondaryImages[i].path);
       if (extension.isEmpty) extension = '.jpg';
       String newName = '${fileNamePrefix}_secondary_${i + 1}$extension';
-      secondaryImageNames.add(newName);
+      uploadImageUrls.add(uploadedImageUrl + newName);
       await _saveImageWithNewName(secondaryImages[i], newName);
     }
+   // 保存上传图片地址到文件
+   final uploadDirectory =  Directory(path.join(parentDirectoryPath, 'upload'));
+   if (uploadDirectory.existsSync() == false) {
+     uploadDirectory.createSync(); // 创建目录
+   }
+   final uploadFile = File(path.join(uploadDirectory.path, 'imageUrls.txt'));
+   await uploadFile.writeAsString(uploadImageUrls.join('\n'));
 
-    // 显示保存成功对话框
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('保存成功'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('主图:'),
-            ...mainImageNames.map((name) => Text('- $name')),
-            SizedBox(height: 10),
-            Text('副图:'),
-            ...secondaryImageNames.map((name) => Text('- $name')),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('确定'),
-          ),
-        ],
-      ),
-    );
+   // 显示保存成功提示
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('图片保存成功')));
   }
 
   // 新增方法：以新名称保存图片
   Future<void> _saveImageWithNewName(File imageFile, String newName) async {
     final directory = imageFile.parent; // 使用导入的 path_provider 方法
-    final newPath = path.join(directory.path, newName);
-    print('保存图片到: $newPath');
-    final newFile = File(newPath);
-
+    final uploadDirectory =  Directory(path.join(directory.path, 'upload'));
+     if (uploadDirectory.existsSync() == false) {
+       uploadDirectory.createSync(); // 创建目录
+     }
+    final newFile = File(path.join(uploadDirectory.path, newName));
     // 读取原始图片数据
     final bytes = await imageFile.readAsBytes();
-
     // 保存图片到新路径
     await newFile.writeAsBytes(bytes);
   }
 
+
+
   Widget buildImageItem(File imageFile, int index, Function fun) {
     return Stack(
-      key: Key("${imageFile.path + index.toString()}"),
+      key: Key(imageFile.path + index.toString()),
       children: [
         Container(
           margin: EdgeInsets.all(8.0),
@@ -377,7 +377,7 @@ class _ImageProcessorState extends State<ImageProcessor> {
                         ? Center(child: Text('暂无副图'))
                         : ReorderableGridView.builder(
                            shrinkWrap: true,
-                            onReorder: reorderMainImages,
+                            onReorder: reorderSecondaryImages,
                             gridDelegate:
                                 SliverGridDelegateWithMaxCrossAxisExtent(
                                   maxCrossAxisExtent: 150,
@@ -389,7 +389,7 @@ class _ImageProcessorState extends State<ImageProcessor> {
                             itemBuilder: (context, index) => buildImageItem(
                               secondaryImages[index],
                               index,
-                              removeMainImage,
+                              removeSecondaryImage,
                             ),
                           ),
                   ),
