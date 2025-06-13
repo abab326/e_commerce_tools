@@ -27,8 +27,8 @@ class _ImageProcessorState extends State<ImageProcessor> {
   @override
   void initState() {
     super.initState();
-    final nowDate =  DateFormat('yyyy/MM/dd').format(DateTime.now());
-    uploadedImageUrl = 'https://s2.imgsha.com/'+ nowDate + '/';
+    final nowDate = DateFormat('yyyy/MM/dd').format(DateTime.now());
+    uploadedImageUrl = 'https://s2.imgsha.com/' + nowDate + '/';
     // 初始化时加载文件名前缀
     fileNamePrefixController = TextEditingController(text: fileNamePrefix);
   }
@@ -135,11 +135,10 @@ class _ImageProcessorState extends State<ImageProcessor> {
 
   // 保存图片
   void saveImages() async {
-
     if (mainImages.isEmpty && secondaryImages.isEmpty) {
-      return; // 主图和副图都为空时不执行保存操作 
+      return; // 主图和副图都为空时不执行保存操作
     }
-   
+
     List uploadImageUrls = [];
     var parentDirectoryPath = ''; // 父目录路径
     // 生成主图文件名
@@ -149,7 +148,7 @@ class _ImageProcessorState extends State<ImageProcessor> {
       }
       String extension = path.extension(mainImages[i].path);
       if (extension.isEmpty) extension = '.jpg';
-      String newName = '${fileNamePrefix}_main_${i + 1}$extension';
+      String newName = '${fileNamePrefix}-main-${i + 1}$extension';
       uploadImageUrls.add(uploadedImageUrl + newName);
       await _saveImageWithNewName(mainImages[i], newName);
     }
@@ -161,19 +160,19 @@ class _ImageProcessorState extends State<ImageProcessor> {
       }
       String extension = path.extension(secondaryImages[i].path);
       if (extension.isEmpty) extension = '.jpg';
-      String newName = '${fileNamePrefix}_secondary_${i + 1}$extension';
+      String newName = '${fileNamePrefix}-sub-${i + 1}$extension';
       uploadImageUrls.add(uploadedImageUrl + newName);
       await _saveImageWithNewName(secondaryImages[i], newName);
     }
-   // 保存上传图片地址到文件
-   final uploadDirectory =  Directory(path.join(parentDirectoryPath, 'upload'));
-   if (uploadDirectory.existsSync() == false) {
-     uploadDirectory.createSync(); // 创建目录
-   }
-   final uploadFile = File(path.join(uploadDirectory.path, 'imageUrls.txt'));
-   await uploadFile.writeAsString(uploadImageUrls.join('\n'));
+    // 保存上传图片地址到文件
+    final uploadDirectory = Directory(path.join(parentDirectoryPath, 'upload'));
+    if (uploadDirectory.existsSync() == false) {
+      uploadDirectory.createSync(); // 创建目录
+    }
+    final uploadFile = File(path.join(uploadDirectory.path, 'imageUrls.txt'));
+    await uploadFile.writeAsString(uploadImageUrls.join('\n'));
 
-   // 显示保存成功提示
+    // 显示保存成功提示
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('图片保存成功')));
@@ -182,68 +181,76 @@ class _ImageProcessorState extends State<ImageProcessor> {
   // 新增方法：以新名称保存图片
   Future<void> _saveImageWithNewName(File imageFile, String newName) async {
     final directory = imageFile.parent; // 使用导入的 path_provider 方法
-    final uploadDirectory =  Directory(path.join(directory.path, 'upload'));
-     if (uploadDirectory.existsSync() == false) {
-       uploadDirectory.createSync(); // 创建目录
-     }
+    final uploadDirectory = Directory(path.join(directory.path, 'upload'));
+    if (!uploadDirectory.existsSync()) {
+      uploadDirectory.createSync(recursive: true); // 创建目录
+    }
     final newFile = File(path.join(uploadDirectory.path, newName));
+
     // 读取原始图片数据
     final bytes = await imageFile.readAsBytes();
     // 保存图片到新路径
     await newFile.writeAsBytes(bytes);
   }
 
-
-
   Widget buildImageItem(File imageFile, int index, Function fun) {
-    return Stack(
+    String imageName = path.basename(imageFile.path);
+    return Tooltip(
       key: Key(imageFile.path + index.toString()),
-      children: [
-        Container(
-          margin: EdgeInsets.all(8.0),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.file(imageFile, width: 110, height: 80, fit: BoxFit.cover),
-              Container(
-                width: 110,
-                color: Colors.grey.shade200,
-                padding: EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.drag_handle, size: 14, color: Colors.grey),
-                    SizedBox(width: 2),
-                    Text(
-                      '拖动',
-                      style: TextStyle(fontSize: 10, color: Colors.grey),
-                    ),
-                  ],
+      message: imageName,
+      child: Stack(
+        children: [
+          Container(
+            margin: EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.file(
+                  imageFile,
+                  width: 110,
+                  height: 80,
+                  fit: BoxFit.cover,
                 ),
-              ),
-            ],
-          ),
-        ),
-        Positioned(
-          right: 0,
-          top: 0,
-          child: InkWell(
-            onTap: () => fun(index),
-            child: Container(
-              padding: EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.close, size: 16, color: Colors.white),
+                Container(
+                  width: 110,
+                  color: Colors.grey.shade200,
+                  padding: EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.drag_handle, size: 14, color: Colors.grey),
+                      SizedBox(width: 2),
+                      Text(
+                        '拖动',
+                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+          Positioned(
+            right: 0,
+            top: 0,
+            child: InkWell(
+              onTap: () => fun(index),
+              child: Container(
+                padding: EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.close, size: 16, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -320,7 +327,7 @@ class _ImageProcessorState extends State<ImageProcessor> {
                     child: mainImages.isEmpty
                         ? Center(child: Text('暂无主图'))
                         : ReorderableGridView.builder(
-                           shrinkWrap: true,
+                            shrinkWrap: true,
                             onReorder: reorderMainImages,
                             gridDelegate:
                                 SliverGridDelegateWithMaxCrossAxisExtent(
@@ -376,7 +383,7 @@ class _ImageProcessorState extends State<ImageProcessor> {
                     child: secondaryImages.isEmpty
                         ? Center(child: Text('暂无副图'))
                         : ReorderableGridView.builder(
-                           shrinkWrap: true,
+                            shrinkWrap: true,
                             onReorder: reorderSecondaryImages,
                             gridDelegate:
                                 SliverGridDelegateWithMaxCrossAxisExtent(
